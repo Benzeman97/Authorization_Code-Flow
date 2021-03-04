@@ -1,0 +1,10 @@
+server:
+  port: 9098
+
+spring:
+  application:
+    name: resource-app
+
+security:
+      jwt:
+        public-key: classpath:public-key.txt
