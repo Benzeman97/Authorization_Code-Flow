@@ -14,4 +14,13 @@ oauth:
     access-token: "http://localhost:9090/oauth/token"
     grant-type: "authorization_code"
     resource-url: "http://127.0.0.1:9098/admin"
-
+  github:
+      client-id: df48f47ac1eb66fb4c3f
+      client-secret: dedffda56a19ee82f41c4cb2adef134ff327c19d
+      access-token-uri: https://github.com/login/oauth/access_token
+      user-authorization-uri: https://github.com/login/oauth/authorize
+      client-authentication-scheme: form
+      user-info-uri: https://api.github.com/user
+      prefer-token-info: false
+      response-type: code
+      grant-type: authorization_code

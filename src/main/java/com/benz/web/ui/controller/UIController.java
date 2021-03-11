@@ -1,6 +1,7 @@
 package com.benz.web.ui.controller;
 
-import com.benz.web.ui.util.OAuth;
+import com.benz.web.ui.config.OAuth;
+import com.benz.web.ui.model.GitHubUser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.codec.binary.Base64;
@@ -51,6 +52,79 @@ public class UIController {
         return new ResponseEntity<>(httpHeaders,HttpStatus.FOUND);
 
 
+    }
+
+    @GetMapping("/github")
+    public ResponseEntity<Object> redirectToGithub() throws Exception {
+
+
+          OAuth.Github github = oAuth.getGithub();
+
+          String url = github.getUserAuthorizationUri();
+          url = url.concat("?client_id="+github.getClientId());
+          url = url.concat("&response_type="+github.getResponseType());
+
+          URI uri =new URI(url);
+          HttpHeaders httpHeaders =new HttpHeaders();
+          httpHeaders.setLocation(uri);
+
+        System.out.println(url);
+
+          return new ResponseEntity<>(httpHeaders,HttpStatus.FOUND);
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/github/profile",produces = {MediaType.APPLICATION_JSON_VALUE})
+    public GitHubUser connectGithubOAuth(@RequestParam("code") String code) throws Exception
+    {
+        System.out.println("Authorization Token = "+code);
+        OAuth.Github github = oAuth.getGithub();
+
+        RestTemplate restTemplate =new RestTemplate();
+        String credentials = github.getClientId().concat(":").concat(github.getClientSecret());
+        String encodedCredentials = new String(Base64.encodeBase64(credentials.getBytes()));
+
+        HttpHeaders httpHeaders =new HttpHeaders();
+        httpHeaders.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+        httpHeaders.add("Authorization","Basic "+encodedCredentials);
+
+        HttpEntity<String> request = new HttpEntity<>(httpHeaders);
+        String access_token_url = github.getAccessTokenUri();
+        access_token_url = access_token_url.concat("?code="+code);
+        access_token_url = access_token_url.concat("&grant_type="+github.getGrantType());
+
+        ResponseEntity<String> response = restTemplate.exchange(access_token_url,HttpMethod.POST,request,String.class);
+
+        System.out.println("Response Body : "+response.getBody());
+
+        ObjectMapper objectMapper =new ObjectMapper();
+        JsonNode node = objectMapper.readTree(response.getBody());
+        String access_token = node.path("access_token").asText();
+        String token_type = node.path("token_type").asText();
+
+        String resourceUrl = github.getUserInfoUri();
+
+        HttpHeaders authHeaders = new HttpHeaders();
+        authHeaders.add("Authorization",token_type.concat(" "+access_token));
+
+        HttpEntity<String> accessRequest = new HttpEntity<>(authHeaders);
+
+        ResponseEntity<String> githubRes  =    restTemplate.exchange(resourceUrl,HttpMethod.GET,accessRequest,String.class);
+
+       JsonNode resNode = objectMapper.readTree(githubRes.getBody());
+       String userName = resNode.path("login").asText();
+       String id = resNode.path("id").asText();
+       String name = resNode.path("name").asText();
+       String type = resNode.path("type").asText();
+       String location = resNode.path("location").asText();
+       String bio = resNode.path("bio").asText();
+       String created = resNode.path("created_at").asText();
+
+       GitHubUser gitHubUser = new GitHubUser(userName,id,name,type,location,bio,created);
+
+        System.out.println(gitHubUser);
+
+       return gitHubUser;
     }
 
     @GetMapping(value = "/private")
